@@ -16,6 +16,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.checker.signedness.qual.BitPattern;
 import org.checkerframework.checker.signedness.qual.PolySigned;
 import org.checkerframework.checker.signedness.qual.Signed;
 import org.checkerframework.checker.signedness.qual.SignedPositive;
@@ -76,6 +77,10 @@ public class SignednessAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
   protected final AnnotationMirror POLY_SIGNED =
       AnnotationBuilder.fromClass(elements, PolySigned.class);
 
+  /** The @BitPattern annotation. */
+  protected final AnnotationMirror BIT_PATTERN =
+      AnnotationBuilder.fromClass(elements, BitPattern.class);
+
   /** The @NonNegative annotation of the Index Checker, as represented by the Value Checker. */
   private final AnnotationMirror INT_RANGE_FROM_NON_NEGATIVE =
       AnnotationBuilder.fromClass(elements, IntRangeFromNonNegative.class);
@@ -132,6 +137,15 @@ public class SignednessAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
         type.replaceAnnotation(SIGNED_POSITIVE);
       } else {
         type.replaceAnnotation(SIGNEDNESS_GLB);
+      }
+    } else if (treeKind == Tree.Kind.AND || treeKind == Tree.Kind.OR || treeKind == Tree.Kind.XOR) {
+      // For bitwise operations, check if either operand is @BitPattern
+      BinaryTree binaryTree = (BinaryTree) tree;
+      AnnotatedTypeMirror leftType = getAnnotatedType(binaryTree.getLeftOperand());
+      AnnotatedTypeMirror rightType = getAnnotatedType(binaryTree.getRightOperand());
+      if (leftType.hasPrimaryAnnotation(BIT_PATTERN)
+          || rightType.hasPrimaryAnnotation(BIT_PATTERN)) {
+        type.replaceAnnotation(BIT_PATTERN);
       }
     } else if (!computingAnnotatedTypeMirrorOfLHS) {
       addSignedPositiveAnnotation(tree, type);
@@ -261,7 +275,8 @@ public class SignednessAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
 
   @Override
   protected TreeAnnotator createTreeAnnotator() {
-    return new ListTreeAnnotator(new SignednessTreeAnnotator(this), super.createTreeAnnotator());
+    // Put SignednessTreeAnnotator AFTER super to ensure BitPattern annotations are applied last
+    return new ListTreeAnnotator(super.createTreeAnnotator(), new SignednessTreeAnnotator(this));
   }
 
   @Override
@@ -304,6 +319,22 @@ public class SignednessAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
           } else {
             AnnotatedTypeMirror lht = getAnnotatedType(tree.getLeftOperand());
             type.replaceAnnotations(lht.getPrimaryAnnotations());
+          }
+          break;
+        case AND:
+        case OR:
+        case XOR:
+          // For bitwise operations, if either operand is @BitPattern, the result is @BitPattern
+          // This overrides the default LUB computation
+          AnnotatedTypeMirror leftType = getAnnotatedType(tree.getLeftOperand());
+          AnnotatedTypeMirror rightType = getAnnotatedType(tree.getRightOperand());
+
+          boolean leftIsBitPattern = leftType.hasPrimaryAnnotation(BIT_PATTERN);
+          boolean rightIsBitPattern = rightType.hasPrimaryAnnotation(BIT_PATTERN);
+
+          // If either side is BitPattern, result is BitPattern
+          if (leftIsBitPattern || rightIsBitPattern) {
+            type.replaceAnnotation(BIT_PATTERN);
           }
           break;
         default:

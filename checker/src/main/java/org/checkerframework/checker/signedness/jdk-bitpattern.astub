@@ -1,0 +1,18 @@
+package java.lang;
+
+import org.checkerframework.checker.signedness.qual.BitPattern;
+import org.checkerframework.checker.signedness.qual.UnknownSignedness;
+
+class Double {
+    static @BitPattern long doubleToLongBits(double value);
+    static @BitPattern long doubleToRawLongBits(double value);
+    // Accept any signedness - these methods just interpret bits
+    static double longBitsToDouble(@UnknownSignedness long bits);
+}
+
+class Float {
+    static @BitPattern int floatToIntBits(float value);
+    static @BitPattern int floatToRawIntBits(float value);
+    // Accept any signedness - these methods just interpret bits
+    static float intBitsToFloat(@UnknownSignedness int bits);
+}

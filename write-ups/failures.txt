@@ -1,0 +1,15 @@
+FAILURES - What Did Not Work Well
+===================================
+
+1. Initially overlooked type inference issues for BitPattern | literal operations, requiring multiple iterations.
+
+2. Attempted to use non-existent MultiGraphQualifierHierarchy class due to framework knowledge gaps.
+
+3. Locale issue (Chinese error messages) was not immediately apparent, delaying test success.
+
+4. Over-engineered by attempting complex QualifierHierarchy customization instead of simpler solutions.
+
+5. Used @PolySigned initially without considering @UnknownSignedness as a better option upfront.
+
+6. Made multiple changes before testing instead of incrementally testing each modification.
+
